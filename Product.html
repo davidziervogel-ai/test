@@ -377,6 +377,7 @@
     .table-footer {
         display: flex;
         justify-content: flex-end;
+        gap: 15px;
         margin-top: 20px;
     }
 
@@ -803,6 +804,7 @@
         </table>
     </div>
     <div class="table-footer">
+        <button type="button" onclick="updateTable()" class="btn-add">Refresh List</button>
         <button type="button" onclick="exportToExcel()" class="btn-export">Export to Excel</button>
     </div>
 </div>
@@ -880,13 +882,11 @@ productTypeSelect.addEventListener('change', () => {
 inventoryCategoryInput.addEventListener('input', handleInventoryCategoryChange);
 hasBarcodeSelect.addEventListener('change', handleBarcodeVisibility);
 
-// *** MODIFICATION START ***
 document.addEventListener('DOMContentLoaded', () => {
     loadState();
     updateRequiredFields();
     updateTable(); // Ensure table is populated on initial load
 });
-// *** MODIFICATION END ***
 
 
 // --- Data Persistence ---
@@ -936,7 +936,6 @@ function loadState() {
     menuCategories.forEach(menu => addToDatalist("menuList", menu));
     invCategories.forEach(cat => addToDatalist("inventoryCategoryList", cat));
     invSubCategories.forEach(sub => addToDatalist("inventorySubCategoryList", sub));
-    // updateTable(); // This call is moved to DOMContentLoaded
   }
 }
 
