@@ -642,6 +642,14 @@
         </select>
       </div>
 
+      <!-- MOVED: Default Selling Price moved here -->
+      <div class="form-group" id="sellingPriceGroup">
+        <label for="sellingPrice" id="sellingPriceLabel" class="tooltip">Default Selling Price
+            <span class="tooltiptext">The default selling price. Can be overridden per variant.</span>
+        </label>
+        <input type="number" step="0.01" id="sellingPrice" placeholder="e.g., 35.00">
+      </div>
+
       <div class="form-group" id="pluEntryGroup" style="display: none;">
         <label for="customPlu" class="tooltip">Custom PLU/SKU<span class="required-star">*</span>
             <span class="tooltiptext">Enter your unique code for this product. Cannot be a duplicate.</span>
@@ -741,13 +749,6 @@
         <input type="number" step="0.01" id="costPrice" placeholder="e.g., 15.50">
       </div>
       
-      <div class="form-group" id="sellingPriceGroup">
-        <label for="sellingPrice" id="sellingPriceLabel" class="tooltip">Default Selling Price
-            <span class="tooltiptext">The default selling price. Can be overridden per variant.</span>
-        </label>
-        <input type="number" step="0.01" id="sellingPrice" placeholder="e.g., 35.00">
-      </div>
-
       <div class="form-group">
         <label for="hasBarcode" class="tooltip">Has Barcode?
             <span class="tooltiptext">Select "Yes" if this product has a scannable barcode.</span>
@@ -813,6 +814,8 @@
   </div>
 </div>
 
+<audio id="exportSound" src="tableaudio.mp3"></audio>
+
 <script>
 let products = [];
 let pluCounter = 1000;
@@ -862,6 +865,7 @@ const menuCategoryGroup = document.getElementById('menuCategoryGroup');
 const customModal = document.getElementById('customModal');
 const modalMessage = document.getElementById('modalMessage');
 const modalActions = document.getElementById('modalActions');
+const exportSound = document.getElementById('exportSound');
 
 // --- Event Listeners ---
 sessionDefinePluSelect.addEventListener('change', () => { if(defaultsSet) { sessionDefinePlu = sessionDefinePluSelect.value; handlePluVisibility(); }});
@@ -1052,13 +1056,13 @@ function updateRequiredFields() {
         costPriceGroup.style.display = 'flex';
     }
 
-
+    // LOGIC BLOCK
     if (selectedType === 'finishedGood') {
         costPriceGroup.style.display = 'none';
         inventoryCategoryLabel.innerHTML = `<span class="tooltip">Inventory Category (Not Required)${baseTooltip('A broad category for stock management. E.g., "Food", "Beverages".')}</span>`;
         inventorySubCategoryLabel.innerHTML = `<span class="tooltip">Inventory Sub-Category (Not Required)${baseTooltip('A more specific category for stock. Suggestions will appear based on the Inventory Category.')}</span>`;
 
-    } else if (selectedType === 'rawMaterial' || selectedType === 'finishedGood & rawMaterial') {
+    } else if (selectedType === 'rawMaterial') {
         costPriceLabel.innerHTML = `<span class="tooltip">Default Cost Price${baseTooltip('This cost price is for the entire supplied quantity. The export will calculate the price per selected UOM.')}</span>`;
         sellingPriceGroup.style.display = 'none';
         prepLocationGroup.style.display = 'none';
@@ -1067,6 +1071,15 @@ function updateRequiredFields() {
         inventorySubCategoryLabel.innerHTML = `<span class="tooltip">Inventory Sub-Category (Recommended)${baseTooltip('A more specific category for stock. Suggestions will appear based on the Inventory Category.')}</span>`;
         suppliedQuantityGroup.style.display = 'flex';
         suppliedQuantityLabel.innerHTML = `<span class="tooltip">Supplied Quantity <span class="required-star">*</span>${baseTooltip('The quantity in which this raw material is supplied or stocked.')}</span>`;
+    
+    } else if (selectedType === 'finishedGood & rawMaterial') {
+        costPriceLabel.innerHTML = `<span class="tooltip">Default Cost Price${baseTooltip('This cost price is for the entire supplied quantity. The export will calculate the price per selected UOM.')}</span>`;
+        // sellingPriceGroup is now visible by default
+        inventoryCategoryLabel.innerHTML = `<span class="tooltip">Inventory Category <span class="required-star">*</span>${baseTooltip('A broad category for stock management. E.g., "Food", "Beverages".')}</span>`;
+        inventorySubCategoryLabel.innerHTML = `<span class="tooltip">Inventory Sub-Category (Recommended)${baseTooltip('A more specific category for stock. Suggestions will appear based on the Inventory Category.')}</span>`;
+        suppliedQuantityGroup.style.display = 'flex';
+        suppliedQuantityLabel.innerHTML = `<span class="tooltip">Supplied Quantity <span class="required-star">*</span>${baseTooltip('The quantity in which this raw material is supplied or stocked.')}</span>`;
+
     } else if (selectedType === 'Manufactured') {
         sellingPriceGroup.style.display = 'none';
         costPriceGroup.style.display = 'none';
@@ -1336,8 +1349,8 @@ function validateForm() {
     let errors = [];
     if (baseProductName === "") errors.push("Product Name is required.");
     if (!uom) errors.push("Selling UOM is required.");
-    if (productType !== 'rawMaterial' && productType !== 'Manufactured' && prep === "") errors.push("Preparation Location is required.");
-    if (productType !== 'rawMaterial' && productType !== 'Manufactured' && menu === "") errors.push("Menu Category is required.");
+    if ((productType === 'finishedGood' || productType === 'finishedGood & rawMaterial') && prep === "") errors.push("Preparation Location is required.");
+    if ((productType === 'finishedGood' || productType === 'finishedGood & rawMaterial') && menu === "") errors.push("Menu Category is required.");
     if (!productType) errors.push("Product Type is required.");
     if (!taxApplicable) errors.push("Tax Applicable is required.");
 
@@ -1345,8 +1358,9 @@ function validateForm() {
         errors.push("If you add variants, you must add at least two. To create a single product, remove the variant.");
     }
 
+    // UPDATED VALIDATION
     if (currentVariants.length === 0) {
-        if (productType === 'finishedGood' && isNaN(defaultPrice)) {
+        if ((productType === 'finishedGood' || productType === 'finishedGood & rawMaterial') && isNaN(defaultPrice)) {
             errors.push("A Default Selling Price is required if no variants are added.");
         }
         if ((productType === 'rawMaterial' || productType === 'finishedGood & rawMaterial') && isNaN(defaultCost)) {
@@ -1594,6 +1608,7 @@ function updateTable(newProductStartIndex = -1) {
 }
 
 function exportToExcel() {
+  exportSound.play();
   if (products.length === 0) {
     showModal("No products to export!", "warning");
     return;
