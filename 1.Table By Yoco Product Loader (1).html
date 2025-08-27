@@ -1,0 +1,1708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Table By Yoco Product Loader</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%2300A3FF'/%3E%3Ctext x='50' y='70' font-size='50' font-family='Poppins, sans-serif' font-weight='bold' fill='white' text-anchor='middle'%3EY%3C/text%3E%3C/svg%3E">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --yoco-bg: #121212;
+      --yoco-surface: #1e1e1e;
+      --yoco-primary: #00A3FF;
+      --yoco-primary-hover: #008bdf;
+      --yoco-text-primary: #FFFFFF;
+      --yoco-text-secondary: #b3b3b3;
+      --yoco-border: #333333;
+      --yoco-red: #eb5757;
+      --yoco-yellow: #ffc107;
+      --yoco-green: #27ae60;
+      --shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    }
+
+    * {
+        box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: var(--yoco-bg);
+      color: var(--yoco-text-primary);
+      position: relative; /* Added for absolute positioning context */
+    }
+
+    .container {
+        max-width: 1600px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    
+    header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 40px;
+        position: relative;
+        flex-wrap: wrap;
+    }
+    
+    header h2 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin: 0;
+        background: linear-gradient(45deg, var(--yoco-primary), #fff);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    #saveStatus {
+        position: absolute;
+        top: 5px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: var(--yoco-green);
+        color: var(--yoco-text-primary);
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 500;
+        opacity: 0;
+        transition: opacity 0.5s ease-in-out;
+        pointer-events: none;
+    }
+
+    .session-settings {
+        background-color: var(--yoco-surface);
+        border: 1px solid var(--yoco-border);
+        border-radius: 16px;
+        padding: 30px;
+        margin-bottom: 20px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 25px;
+        align-items: end;
+    }
+
+    .session-settings h3 {
+        grid-column: 1 / -1;
+        margin: 0 0 10px 0;
+        color: var(--yoco-primary);
+    }
+
+    form {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 25px;
+      margin-bottom: 40px;
+      padding: 30px;
+      background-color: var(--yoco-surface);
+      border: 1px solid var(--yoco-border);
+      border-radius: 16px;
+      box-shadow: var(--shadow);
+    }
+    
+    .form-group {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .dynamic-section {
+        grid-column: 1 / -1; /* Span full width */
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        border-top: 1px solid var(--yoco-border);
+        padding-top: 20px;
+    }
+
+    .dynamic-row {
+        display: grid;
+        grid-template-columns: 1fr auto auto auto;
+        gap: 10px;
+        align-items: center;
+    }
+    
+    .modifier-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr auto auto;
+        gap: 10px;
+        align-items: center;
+    }
+
+    .variant-row {
+        background-color: #2a2a2a;
+        padding: 15px;
+        border-radius: 8px;
+        border: 1px solid var(--yoco-border);
+    }
+    
+    .btn-add-dynamic {
+        align-self: flex-start;
+        padding: 8px 16px;
+        font-size: 14px;
+    }
+    
+    .form-actions-footer {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        margin-top: 10px;
+        grid-column: 1 / -1;
+    }
+
+
+    label {
+      font-weight: 500;
+      margin-bottom: 10px;
+      font-size: 14px;
+      color: var(--yoco-text-secondary);
+    }
+    
+    label .required-star {
+        color: var(--yoco-primary);
+        font-weight: bold;
+        margin-left: 2px;
+    }
+
+    input, select, textarea {
+      padding: 14px;
+      border-radius: 8px;
+      border: 1px solid var(--yoco-border);
+      background-color: #2a2a2a;
+      color: var(--yoco-text-primary);
+      font-size: 16px;
+      font-family: 'Poppins', sans-serif;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      resize: vertical;
+    }
+
+    input:disabled, select:disabled, textarea:disabled {
+        background-color: #333;
+        cursor: not-allowed;
+    }
+    
+    select:invalid {
+        color: var(--yoco-text-secondary);
+    }
+
+    input:focus, select:focus, textarea:focus {
+        outline: none;
+        border-color: var(--yoco-primary);
+        box-shadow: 0 0 0 3px rgba(0, 163, 255, 0.3);
+    }
+    
+    input::placeholder, textarea::placeholder {
+        color: var(--yoco-text-secondary);
+        opacity: 0.7;
+    }
+
+    .table-container {
+        overflow-x: auto;
+        background-color: var(--yoco-surface);
+        border: 1px solid var(--yoco-border);
+        border-radius: 16px;
+        box-shadow: var(--shadow);
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 16px 20px;
+      text-align: left;
+      border-bottom: 1px solid var(--yoco-border);
+      font-size: 14px;
+    }
+    
+    tr:last-child td {
+        border-bottom: none;
+    }
+
+    th {
+      background: #2a2a2a;
+      font-weight: 600;
+      color: var(--yoco-text-primary);
+      text-transform: uppercase;
+      font-size: 12px;
+      letter-spacing: 0.8px;
+    }
+    
+    tbody tr {
+        transition: background-color 0.5s ease-in-out;
+    }
+
+    tbody tr:hover {
+        background-color: #2c2c2c;
+    }
+
+    tbody tr.new-row {
+        background-color: rgba(0, 163, 255, 0.2);
+    }
+
+    button {
+      padding: 14px 28px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+      font-family: 'Poppins', sans-serif;
+      transition: all 0.2s ease-in-out;
+    }
+    
+    button:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+    }
+
+    .btn-add {
+      background: var(--yoco-primary);
+      color: var(--yoco-text-primary);
+    }
+    .btn-add:hover {
+        background: var(--yoco-primary-hover);
+    }
+
+    .btn-export {
+      background: transparent;
+      color: var(--yoco-primary);
+      border: 2px solid var(--yoco-primary);
+    }
+    .btn-export:hover {
+        background: var(--yoco-primary);
+        color: var(--yoco-text-primary);
+    }
+
+    .btn-clear {
+        background: transparent;
+        color: var(--yoco-red);
+        border: 2px solid var(--yoco-red);
+        padding: 12px 14px;
+    }
+    .btn-clear:hover {
+        background: var(--yoco-red);
+        color: var(--yoco-text-primary);
+    }
+    .btn-clear svg {
+        fill: var(--yoco-red);
+        transition: fill 0.2s;
+    }
+    .btn-clear:hover svg {
+        fill: var(--yoco-text-primary);
+    }
+
+    .btn-remove {
+      background-color: transparent;
+      padding: 5px;
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .btn-remove svg {
+        fill: var(--yoco-text-secondary);
+        transition: fill 0.2s;
+    }
+    .btn-remove:hover svg {
+        fill: var(--yoco-red);
+    }
+    .btn-remove:hover {
+        background-color: rgba(235, 87, 87, 0.1);
+        transform: none;
+        box-shadow: none;
+    }
+
+
+    .button-container {
+      margin-top: 20px;
+      display: flex;
+      gap: 15px;
+      align-items: center;
+    }
+
+    .tooltip {
+      position: relative;
+      cursor: help;
+      border-bottom: 1px dotted var(--yoco-text-secondary);
+    }
+
+    .tooltip .tooltiptext {
+      visibility: hidden;
+      width: 280px;
+      background-color: #2a2a2a;
+      color: var(--yoco-text-primary);
+      text-align: left;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid var(--yoco-border);
+      position: absolute;
+      z-index: 10;
+      bottom: 125%;
+      left: 50%;
+      margin-left: -140px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      font-weight: 400;
+      font-size: 13px;
+      line-height: 1.6;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+    
+    .tooltip .tooltiptext::after {
+      content: "";
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      margin-left: -5px;
+      border-width: 5px;
+      border-style: solid;
+      border-color: #2a2a2a transparent transparent transparent;
+    }
+
+    .tooltip:hover .tooltiptext {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    .table-footer {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 20px;
+    }
+
+    #applyAllContainer {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 15px;
+        background-color: #2a2a2a;
+        padding: 15px;
+        border-radius: 8px;
+        border: 1px solid var(--yoco-border);
+    }
+    #applyAllContainer input {
+        flex-grow: 1;
+    }
+    #applyAllContainer button {
+        padding: 12px 24px;
+        font-size: 14px;
+        flex-shrink: 0; /* Prevent button from shrinking */
+    }
+
+    /* Custom Modal Styles */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+    }
+    .modal-overlay.show {
+        opacity: 1;
+        pointer-events: auto;
+    }
+    .modal-content {
+        padding: 30px;
+        border-radius: 16px;
+        min-width: 320px;
+        max-width: 500px;
+        text-align: center;
+        transform: scale(0.9);
+        transition: transform 0.3s ease;
+    }
+    .modal-overlay.show .modal-content {
+        transform: scale(1);
+    }
+    .modal-content p {
+        margin: 0 0 20px 0;
+        font-size: 16px;
+        line-height: 1.6;
+        white-space: pre-wrap;
+    }
+    .modal-actions {
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+    }
+    .modal-content.error {
+        background-color: #441c24;
+        color: #f8d7da;
+        border: 1px solid var(--yoco-red);
+    }
+    .modal-content.warning {
+        background-color: #4d421a;
+        color: #fff3cd;
+        border: 1px solid var(--yoco-yellow);
+    }
+    
+    .creator-stamp-icon {
+        position: absolute; /* MODIFIED: Changed from 'fixed' to 'absolute' */
+        top: 15px;
+        right: 20px;
+        z-index: 9999;
+        cursor: pointer;
+    }
+
+    .creator-stamp-icon svg {
+        stroke: var(--yoco-text-secondary);
+        transition: stroke 0.2s;
+    }
+
+    .creator-stamp-icon:hover svg {
+        stroke: var(--yoco-primary);
+    }
+
+    .creator-stamp-icon .creator-tooltip-text {
+      visibility: hidden;
+      width: 160px;
+      background-color: #2a2a2a;
+      color: var(--yoco-text-primary);
+      text-align: center;
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid var(--yoco-border);
+      position: absolute;
+      z-index: 1;
+      top: 50%;
+      right: 110%; 
+      transform: translateY(-50%); 
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    
+    .creator-stamp-icon .creator-tooltip-text::after {
+      content: "";
+      position: absolute;
+      top: 50%; 
+      left: 100%; 
+      margin-top: -5px;
+      border-width: 5px;
+      border-style: solid;
+      border-color: transparent transparent transparent #2a2a2a; 
+    }
+
+    .creator-stamp-icon:hover .creator-tooltip-text {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    @media (max-width: 768px) {
+        body {
+            padding: 10px;
+        }
+
+        .container {
+            padding: 10px;
+        }
+
+        header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 20px;
+        }
+
+        header h2 {
+            font-size: 2rem;
+        }
+
+        .session-settings, form {
+            padding: 20px;
+            grid-template-columns: 1fr; /* Single column layout for form */
+        }
+
+        .dynamic-row, .modifier-row {
+            grid-template-columns: 1fr; /* Stack inputs in dynamic rows */
+            gap: 15px;
+        }
+
+        .dynamic-row .btn-remove {
+            align-self: flex-end; /* Move remove button to the end */
+        }
+
+        th, td {
+            padding: 12px 10px;
+            font-size: 13px;
+        }
+
+        .button-container {
+            width: 100%;
+            flex-direction: column;
+        }
+
+        .button-container button {
+            width: 100%;
+        }
+
+        .form-actions-footer {
+            justify-content: center;
+        }
+
+        .form-actions-footer .btn-add {
+            width: 100%;
+        }
+    }
+  </style>
+</head>
+<body>
+
+<div class="creator-stamp-icon">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+    <span class="creator-tooltip-text">Created by Leo Royne</span>
+</div>
+
+<div class="container">
+    <header>
+        <h2>Table By Yoco Product Loader</h2>
+        <span id="saveStatus">Saved!</span>
+        <div class="button-container">
+            <button type="button" onclick="exportToExcel()" class="btn-export">Export to Excel</button>
+            <button type="button" onclick="confirmClearAll()" class="btn-clear" title="Clear All Data">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"><path d="M3 6v18h18v-18h-18zm5 14c0 .552-.448 1-1 1s-1-.448-1-1v-10c0-.552.448-1 1-1s1 .448 1 1v10zm5 0c0 .552-.448 1-1 1s-1-.448-1-1v-10c0-.552.448-1 1-1s1 .448 1 1v10zm5 0c0 .552-.448 1-1 1s-1-.448-1-1v-10c0-.552.448-1 1-1s1 .448 1 1v10zm4-18h-20v-2h6v-1.5c0-.827.673-1.5 1.5-1.5h5c.825 0 1.5.671 1.5 1.5v1.5h6v2z"/></svg>
+            </button>
+        </div>
+    </header>
+
+    <div class="session-settings">
+        <h3>Session Defaults</h3>
+        <div class="form-group">
+            <label for="sessionSite" class="tooltip">Site<span class="required-star">*</span>
+                <span class="tooltiptext">Set the site for this entire session. You can edit this later.</span>
+            </label>
+            <input list="siteList" id="sessionSite" required placeholder="e.g., Main Street Cafe">
+        </div>
+        <div class="form-group">
+            <label for="sessionDefinePlu" class="tooltip">Define PLU/SKU?<span class="required-star">*</span>
+                <span class="tooltiptext">Set the PLU method for this session.</span>
+            </label>
+            <select id="sessionDefinePlu">
+                <option value="no">No (Auto-generate)</option>
+                <option value="yes">Yes (Manual Entry)</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <button type="button" id="defaultsButton" onclick="setDefaults()" class="btn-add">Set Defaults</button>
+        </div>
+    </div>
+
+    <form id="productForm" novalidate>
+      <!-- SECTION: Main Product Details -->
+      <div class="form-group">
+        <label for="productName" class="tooltip">Product Name<span class="required-star">*</span>
+          <span class="tooltiptext">
+            E.g., "Chicken Pizza". Variants below can be for sizes like "Small", "Medium", or "Large".
+          </span>
+        </label>
+        <input type="text" id="productName" required placeholder="e.g., Chicken Pizza">
+      </div>
+      
+      <div class="form-group">
+        <label for="taxApplicable" class="tooltip">Tax Applicable<span class="required-star">*</span>
+            <span class="tooltiptext">Select TRUE if tax should be added to the selling price, otherwise select FALSE.</span>
+        </label>
+        <select id="taxApplicable" required>
+            <option value="" disabled selected>-- Please choose an option --</option>
+            <option value="true">TRUE</option>
+            <option value="false">FALSE</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="productType" class="tooltip">Product Type<span class="required-star">*</span>
+            <span class="tooltiptext">
+                <b>finishedGood:</b> A product sold directly to customers.<br><br>
+                <b>rawMaterial:</b> An ingredient used to make other products.<br><br>
+                <b>finishedGood & rawMaterial:</b> A product that is both sold and used as an ingredient.<br><br>
+                <b>Manufactured:</b> A product made from raw materials, which can also be sold.
+            </span>
+        </label>
+        <select id="productType" required>
+            <option value="" disabled selected>-- Select a Type --</option>
+            <option value="finishedGood">finishedGood</option>
+            <option value="rawMaterial">rawMaterial</option>
+            <option value="finishedGood & rawMaterial">finishedGood & rawMaterial</option>
+            <option value="Manufactured">Manufactured</option>
+        </select>
+      </div>
+
+      <div class="form-group" id="pluEntryGroup" style="display: none;">
+        <label for="customPlu" class="tooltip">Custom PLU/SKU<span class="required-star">*</span>
+            <span class="tooltiptext">Enter your unique code for this product. Cannot be a duplicate.</span>
+        </label>
+        <input type="text" id="customPlu" placeholder="e.g., BRG-001">
+      </div>
+      
+      <!-- SECTION: Dynamic Variants and Modifiers -->
+      <div class="dynamic-section" id="variantsSection">
+          <label class="tooltip">Variants
+              <span class="tooltiptext">Add different versions of the product.</span>
+          </label>
+          <div id="applyAllContainer" style="display: none;">
+            <input type="number" step="0.01" id="masterVariantPrice" placeholder="Set price for all variants">
+            <button type="button" onclick="applyPriceToAllVariants()" class="btn-add btn-add-dynamic">Apply to All</button>
+          </div>
+          <div id="variantsContainer"></div>
+          <button type="button" id="addVariantBtn" onclick="addVariantRow()" class="btn-add btn-add-dynamic">Add Variant</button>
+      </div>
+      
+      <div class="dynamic-section" id="modifiersSection">
+          <label class="tooltip">Modifiers
+              <span class="tooltiptext">Add extras that can be applied to the product or specific variants.</span>
+          </label>
+          <div id="modifiersContainer"></div>
+          <button type="button" id="addModifierBtn" onclick="addModifierRow()" class="btn-add btn-add-dynamic">Add Modifier</button>
+      </div>
+
+      <!-- SECTION: Inventory and Pricing Details -->
+      <div class="form-group">
+        <label for="uom" class="tooltip">UOM<span class="required-star">*</span>
+            <span class="tooltiptext">"Unit of Measure". How the product is sold. E.g., "Each" for a bottle, "Kilograms" for meat.</span>
+        </label>
+        <select id="uom" required>
+          <option value="" disabled selected>-- Select a UOM --</option>
+          <option value="ea">Each</option>
+          <option value="kg">Kilograms</option>
+          <option value="g">Grams</option>
+          <option value="l">Litres</option>
+          <option value="ml">Millilitres</option>
+          <option value="m">Meters</option>
+          <option value="mm">Millimeters</option>
+          <option value="cm">Centimeters</option>
+        </select>
+      </div>
+
+      <div class="form-group" id="prepLocationGroup">
+        <label for="prepLocation" class="tooltip">Preparation Location<span class="required-star">*</span>
+            <span class="tooltiptext">Where the product is prepared. E.g., "Kitchen" for food, "Bar" for drinks.</span>
+        </label>
+        <input list="prepList" id="prepLocation" required placeholder="e.g., Kitchen">
+        <datalist id="prepList"></datalist>
+      </div>
+
+      <div class="form-group" id="menuCategoryGroup">
+        <label for="menuCategory" class="tooltip">Menu Category<span class="required-star">*</span>
+            <span class="tooltiptext">How the product is grouped on the customer menu. E.g., "Burgers", "Drinks", "Desserts".</span>
+        </label>
+        <input type="text" id="menuCategory" list="menuList" required placeholder="e.g., Burgers">
+        <datalist id="menuList"></datalist>
+      </div>
+      
+      <div class="form-group">
+        <label for="inventoryCategory" id="inventoryCategoryLabel" class="tooltip">Inventory Category
+            <span class="tooltiptext">A broad category for stock management. E.g., "Food", "Beverages", "Packaging".</span>
+        </label>
+        <input type="text" id="inventoryCategory" list="inventoryCategoryList" placeholder="e.g., Food">
+        <datalist id="inventoryCategoryList"></datalist>
+      </div>
+
+      <div class="form-group">
+        <label for="inventorySubCategory" id="inventorySubCategoryLabel" class="tooltip">Inventory Sub-Category
+            <span class="tooltiptext">A more specific category for stock. Suggestions will appear based on the Inventory Category.</span>
+        </label>
+        <input type="text" id="inventorySubCategory" list="inventorySubCategoryList" placeholder="e.g., Meat">
+        <datalist id="inventorySubCategoryList"></datalist>
+      </div>
+      
+      <div class="form-group" id="suppliedQuantityGroup" style="display: none;">
+        <label for="suppliedQuantity" id="suppliedQuantityLabel" class="tooltip">Supplied Quantity
+            <span class="tooltiptext">The quantity in which this raw material is supplied or stocked.</span>
+        </label>
+        <input type="number" id="suppliedQuantity" placeholder="e.g., 100">
+      </div>
+      
+      <div class="form-group" id="yieldQuantityGroup" style="display: none;">
+        <label for="yieldQuantity" id="yieldQuantityLabel" class="tooltip">Yield Quantity
+            <span class="tooltiptext">The quantity produced from the manufacturing process.</span>
+        </label>
+        <input type="number" id="yieldQuantity" placeholder="e.g., 50">
+      </div>
+
+      <div class="form-group" id="costPriceGroup">
+        <label for="costPrice" id="costPriceLabel" class="tooltip">Default Cost Price
+            <span class="tooltiptext">Cost price of the Selling UOM. E.g., if Selling UOM is KG, this is the price for 1 KG, even if the supplied quantity is 2.5 KG.</span>
+        </label>
+        <input type="number" step="0.01" id="costPrice" placeholder="e.g., 15.50">
+      </div>
+      
+      <div class="form-group" id="sellingPriceGroup">
+        <label for="sellingPrice" id="sellingPriceLabel" class="tooltip">Default Selling Price
+            <span class="tooltiptext">The default selling price. Can be overridden per variant.</span>
+        </label>
+        <input type="number" step="0.01" id="sellingPrice" placeholder="e.g., 35.00">
+      </div>
+
+      <div class="form-group">
+        <label for="hasBarcode" class="tooltip">Has Barcode?
+            <span class="tooltiptext">Select "Yes" if this product has a scannable barcode.</span>
+        </label>
+        <select id="hasBarcode">
+            <option value="no">No</option>
+            <option value="yes">Yes</option>
+        </select>
+      </div>
+
+      <div class="form-group" id="barcodeEntryGroup" style="display: none;">
+        <label for="barcode" class="tooltip">Barcode
+            <span class="tooltiptext">Enter the numerical or alphanumeric barcode for this product.</span>
+        </label>
+        <input type="text" id="barcode" placeholder="Enter product barcode">
+      </div>
+      
+      <div class="form-actions-footer">
+          <button type="button" onclick="addProduct()" class="btn-add">Add Product</button>
+      </div>
+    </form>
+
+    <div class="table-container">
+        <table id="productTable">
+          <thead>
+            <tr>
+              <th>Product PLU</th>
+              <th>Product Name</th>
+              <th>Variant</th>
+              <th>Site</th>
+              <th>GP</th>
+              <th>UOM</th>
+              <th>Prep Location</th>
+              <th>Menu Category</th>
+              <th>Inv Category</th>
+              <th>Inv Sub-Category</th>
+              <th>Product Type</th>
+              <th>Enabled</th>
+              <th>Cost Price</th>
+              <th>Selling Price</th>
+              <th>Dynamic Price</th>
+              <th>Visible on App</th>
+              <th>Selling Location</th>
+              <th>Storage Location</th>
+              <th>Taxable</th>
+              <th>Modifier</th>
+              <th>Barcode</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+    </div>
+    <div class="table-footer">
+        <button type="button" onclick="exportToExcel()" class="btn-export">Export to Excel</button>
+    </div>
+</div>
+
+<div id="customModal" class="modal-overlay">
+  <div class="modal-content">
+    <p id="modalMessage"></p>
+    <div id="modalActions" class="modal-actions"></div>
+  </div>
+</div>
+
+<script>
+let products = [];
+let pluCounter = 1000;
+let currentModifiers = [];
+let currentVariants = [];
+let sessionSite = '';
+let sessionDefinePlu = 'no';
+let defaultsSet = false;
+
+// --- Predefined Category Data for Suggestions ---
+const categoryMap = {
+    "Food": ["Meat", "Dairy", "Produce", "Bakery", "Dry Goods", "Frozen"],
+    "Beverages": ["Sodas", "Juices", "Alcohol", "Coffee & Tea", "Water"],
+    "Packaging": ["Containers", "Bags", "Cutlery", "Napkins"],
+    "Supplies": ["Cleaning", "Office", "Uniforms"]
+};
+
+// --- DOM Elements ---
+const sessionSiteInput = document.getElementById('sessionSite');
+const sessionDefinePluSelect = document.getElementById('sessionDefinePlu');
+const defaultsButton = document.getElementById('defaultsButton');
+const pluEntryGroup = document.getElementById('pluEntryGroup');
+const productTypeSelect = document.getElementById('productType');
+const costPriceGroup = document.getElementById('costPriceGroup');
+const sellingPriceGroup = document.getElementById('sellingPriceGroup');
+const costPriceLabel = document.getElementById('costPriceLabel');
+const sellingPriceLabel = document.getElementById('sellingPriceLabel');
+const inventoryCategoryLabel = document.getElementById('inventoryCategoryLabel');
+const inventorySubCategoryLabel = document.getElementById('inventorySubCategoryLabel');
+const inventoryCategoryInput = document.getElementById('inventoryCategory');
+const suppliedQuantityGroup = document.getElementById('suppliedQuantityGroup');
+const suppliedQuantityLabel = document.getElementById('suppliedQuantityLabel');
+const yieldQuantityGroup = document.getElementById('yieldQuantityGroup');
+const yieldQuantityLabel = document.getElementById('yieldQuantityLabel');
+const inventorySubCategoryDatalist = document.getElementById('inventorySubCategoryList');
+const hasBarcodeSelect = document.getElementById('hasBarcode');
+const barcodeEntryGroup = document.getElementById('barcodeEntryGroup');
+const saveStatus = document.getElementById('saveStatus');
+const modifiersSection = document.getElementById('modifiersSection');
+const modifiersContainer = document.getElementById('modifiersContainer');
+const variantsSection = document.getElementById('variantsSection');
+const variantsContainer = document.getElementById('variantsContainer');
+const addVariantBtn = document.getElementById('addVariantBtn');
+const addModifierBtn = document.getElementById('addModifierBtn');
+const prepLocationGroup = document.getElementById('prepLocationGroup');
+const menuCategoryGroup = document.getElementById('menuCategoryGroup');
+const customModal = document.getElementById('customModal');
+const modalMessage = document.getElementById('modalMessage');
+const modalActions = document.getElementById('modalActions');
+
+// --- Event Listeners ---
+sessionDefinePluSelect.addEventListener('change', () => { if(defaultsSet) { sessionDefinePlu = sessionDefinePluSelect.value; handlePluVisibility(); }});
+productTypeSelect.addEventListener('change', () => {
+    const selectedType = productTypeSelect.value;
+    if (selectedType === 'finishedGood' || selectedType === 'finishedGood & rawMaterial') {
+        document.getElementById('uom').value = 'ea';
+    }
+    updateRequiredFields();
+    renderVariants(); // Re-render variants when product type changes
+});
+inventoryCategoryInput.addEventListener('input', handleInventoryCategoryChange);
+hasBarcodeSelect.addEventListener('change', handleBarcodeVisibility);
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadState();
+    updateRequiredFields();
+});
+
+
+// --- Data Persistence ---
+function showSaveStatus() {
+    saveStatus.style.opacity = '1';
+    setTimeout(() => {
+        saveStatus.style.opacity = '0';
+    }, 2000);
+}
+
+function saveState() {
+  const state = {
+      products,
+      pluCounter,
+      sessionSite,
+      sessionDefinePlu,
+      defaultsSet
+  };
+  localStorage.setItem('productData', JSON.stringify(state));
+  showSaveStatus();
+}
+
+function loadState() {
+  const savedData = localStorage.getItem('productData');
+  if (savedData) {
+    const state = JSON.parse(savedData);
+    products = state.products || [];
+    pluCounter = state.pluCounter || 1000;
+    sessionSite = state.sessionSite || '';
+    sessionDefinePlu = state.sessionDefinePlu || 'no';
+    defaultsSet = state.defaultsSet || false;
+
+    if (defaultsSet) {
+        sessionSiteInput.value = sessionSite;
+        sessionDefinePluSelect.value = sessionDefinePlu;
+        setDefaults(true); // Pass flag to prevent alert on load
+    }
+
+    const sites = new Set(products.map(p => p.Site));
+    const preps = new Set(products.map(p => p["Preparation Location"]));
+    const menuCategories = new Set(products.map(p => p["Menu Category"]));
+    const invCategories = new Set(products.map(p => p["Inventory Category"]));
+    const invSubCategories = new Set(products.map(p => p["Inventory Sub-Category"]));
+    
+    sites.forEach(site => addToDatalist("siteList", site));
+    preps.forEach(prep => addToDatalist("prepList", prep));
+    menuCategories.forEach(menu => addToDatalist("menuList", menu));
+    invCategories.forEach(cat => addToDatalist("inventoryCategoryList", cat));
+    invSubCategories.forEach(sub => addToDatalist("inventorySubCategoryList", sub));
+    updateTable();
+  }
+}
+
+function clearAllData() {
+    products = [];
+    pluCounter = 1000;
+    sessionSite = '';
+    sessionDefinePlu = 'no';
+    defaultsSet = false;
+    localStorage.removeItem('productData');
+    sessionSiteInput.value = '';
+    sessionDefinePluSelect.value = 'no';
+    editDefaults(true); // pass flag to prevent saving
+    updateTable();
+}
+
+// --- Custom Modal Logic ---
+function showModal(message, type = 'error', onConfirm = null, showCancel = false) {
+    modalMessage.innerHTML = message;
+    const modalContent = customModal.querySelector('.modal-content');
+    modalContent.className = 'modal-content ' + type;
+    modalActions.innerHTML = '';
+
+    if (onConfirm) {
+        const confirmBtn = document.createElement('button');
+        confirmBtn.textContent = 'Continue';
+        confirmBtn.className = 'btn-add';
+        confirmBtn.onclick = () => {
+            onConfirm();
+            customModal.classList.remove('show');
+        };
+        modalActions.appendChild(confirmBtn);
+    }
+    
+    if (showCancel || !onConfirm) {
+        const closeBtn = document.createElement('button');
+        closeBtn.textContent = onConfirm ? 'Cancel' : 'Close';
+        closeBtn.className = 'btn-export';
+        closeBtn.onclick = () => customModal.classList.remove('show');
+        modalActions.appendChild(closeBtn);
+    }
+
+    customModal.classList.add('show');
+}
+
+function confirmClearAll() {
+    showModal(
+        'Are you sure you want to clear all products and session defaults? This action cannot be undone.',
+        'warning',
+        () => {
+            clearAllData();
+            showModal('All data has been cleared.', 'warning');
+        },
+        true
+    );
+}
+
+// --- Session Defaults Logic ---
+function setDefaults(isLoading = false) {
+    const siteValue = sessionSiteInput.value.trim();
+    if (!isLoading && siteValue === "") {
+        showModal("Please enter a Site for this session.", "error");
+        return;
+    }
+    sessionSite = siteValue;
+    sessionDefinePlu = sessionDefinePluSelect.value;
+    
+    sessionSiteInput.disabled = true;
+    sessionDefinePluSelect.disabled = true;
+    defaultsButton.textContent = "Edit Defaults";
+    defaultsButton.onclick = editDefaults;
+    defaultsSet = true;
+    handlePluVisibility();
+    if (!isLoading) saveState();
+}
+
+function editDefaults(isClearing = false) {
+    sessionSiteInput.disabled = false;
+    sessionDefinePluSelect.disabled = false;
+    defaultsButton.textContent = "Set Defaults";
+    defaultsButton.onclick = setDefaults;
+    defaultsSet = false;
+    if (!isClearing) saveState();
+}
+
+
+// --- UI Logic ---
+function handlePluVisibility() {
+    if (sessionDefinePlu === 'yes') {
+        pluEntryGroup.style.display = 'flex';
+    } else {
+        pluEntryGroup.style.display = 'none';
+        document.getElementById('customPlu').value = '';
+    }
+}
+
+function updateRequiredFields() {
+    const selectedType = productTypeSelect.value;
+    const baseTooltip = (text) => `<span class="tooltiptext">${text}</span>`;
+
+    // Reset all to default state first
+    costPriceGroup.style.display = 'flex';
+    sellingPriceGroup.style.display = 'flex';
+    prepLocationGroup.style.display = 'flex';
+    menuCategoryGroup.style.display = 'flex';
+    costPriceLabel.innerHTML = `<span class="tooltip">Default Cost Price${baseTooltip('Cost price of the Selling UOM. E.g., if Selling UOM is KG, this is the price for 1 KG, even if the supplied quantity is 2.5 KG.')}</span>`;
+    sellingPriceLabel.innerHTML = `<span class="tooltip">Default Selling Price${baseTooltip('The default selling price. Can be overridden per variant.')}</span>`;
+    inventoryCategoryLabel.innerHTML = `<span class="tooltip">Inventory Category${baseTooltip('A broad category for stock management. E.g., "Food", "Beverages".')}</span>`;
+    inventorySubCategoryLabel.innerHTML = `<span class="tooltip">Inventory Sub-Category${baseTooltip('A more specific category for stock. Suggestions will appear based on the Inventory Category.')}</span>`;
+    suppliedQuantityGroup.style.display = 'none';
+    yieldQuantityGroup.style.display = 'none';
+    suppliedQuantityLabel.innerHTML = `<span class="tooltip">Supplied Quantity${baseTooltip('The quantity in which this raw material is supplied or stocked.')}</span>`;
+    yieldQuantityLabel.innerHTML = `<span class="tooltip">Yield Quantity${baseTooltip('The quantity produced from the manufacturing process.')}</span>`;
+
+    if (currentVariants.length > 0) {
+        sellingPriceGroup.style.display = 'none';
+        costPriceGroup.style.display = 'none';
+    } else {
+        sellingPriceGroup.style.display = 'flex';
+        costPriceGroup.style.display = 'flex';
+    }
+
+
+    if (selectedType === 'finishedGood') {
+        costPriceGroup.style.display = 'none';
+        inventoryCategoryLabel.innerHTML = `<span class="tooltip">Inventory Category (Not Required)${baseTooltip('A broad category for stock management. E.g., "Food", "Beverages".')}</span>`;
+        inventorySubCategoryLabel.innerHTML = `<span class="tooltip">Inventory Sub-Category (Not Required)${baseTooltip('A more specific category for stock. Suggestions will appear based on the Inventory Category.')}</span>`;
+
+    } else if (selectedType === 'rawMaterial' || selectedType === 'finishedGood & rawMaterial') {
+        costPriceLabel.innerHTML = `<span class="tooltip">Default Cost Price${baseTooltip('This cost price is for the entire supplied quantity. The export will calculate the price per selected UOM.')}</span>`;
+        sellingPriceGroup.style.display = 'none';
+        prepLocationGroup.style.display = 'none';
+        menuCategoryGroup.style.display = 'none';
+        inventoryCategoryLabel.innerHTML = `<span class="tooltip">Inventory Category <span class="required-star">*</span>${baseTooltip('A broad category for stock management. E.g., "Food", "Beverages".')}</span>`;
+        inventorySubCategoryLabel.innerHTML = `<span class="tooltip">Inventory Sub-Category (Recommended)${baseTooltip('A more specific category for stock. Suggestions will appear based on the Inventory Category.')}</span>`;
+        suppliedQuantityGroup.style.display = 'flex';
+        suppliedQuantityLabel.innerHTML = `<span class="tooltip">Supplied Quantity <span class="required-star">*</span>${baseTooltip('The quantity in which this raw material is supplied or stocked.')}</span>`;
+    } else if (selectedType === 'Manufactured') {
+        sellingPriceGroup.style.display = 'none';
+        costPriceGroup.style.display = 'none';
+        prepLocationGroup.style.display = 'none';
+        menuCategoryGroup.style.display = 'none';
+        inventoryCategoryLabel.innerHTML = `<span class="tooltip">Inventory Category <span class="required-star">*</span>${baseTooltip('A broad category for stock management. E.g., "Food", "Beverages".')}</span>`;
+        inventorySubCategoryLabel.innerHTML = `<span class="tooltip">Inventory Sub-Category (Recommended)${baseTooltip('A more specific category for stock. Suggestions will appear based on the Inventory Category.')}</span>`;
+        yieldQuantityGroup.style.display = 'flex';
+        yieldQuantityLabel.innerHTML = `<span class="tooltip">Yield Quantity <span class="required-star">*</span>${baseTooltip('The quantity produced from the manufacturing process.')}</span>`;
+    }
+    
+    // Handle modifier and variant button visibility
+    if (selectedType === 'rawMaterial' || selectedType === 'Manufactured') {
+        if (currentModifiers.length > 0) {
+            showModal('Modifiers are not applicable for this product type and will be removed.', 'warning');
+            currentModifiers = [];
+            renderModifiers();
+        }
+        addModifierBtn.disabled = true;
+    } else {
+        addModifierBtn.disabled = false;
+    }
+
+    if (selectedType === 'rawMaterial' || selectedType === 'Manufactured') {
+        if (currentVariants.length > 0) {
+            showModal('Raw materials and manufactured products must be single items. Variants will be removed.', 'warning');
+            currentVariants = [];
+            renderVariants();
+            updateRequiredFields(); // Re-run to show default price fields again
+        }
+        addVariantBtn.disabled = true;
+    } else {
+        addVariantBtn.disabled = false;
+    }
+}
+
+function handleInventoryCategoryChange(event) {
+    const category = event.target.value;
+    const subCategories = categoryMap[category];
+    
+    if (subCategories) {
+        subCategories.forEach(sub => {
+           addToDatalist("inventorySubCategoryList", sub);
+        });
+    }
+}
+
+function handleBarcodeVisibility() {
+    if (hasBarcodeSelect.value === 'yes') {
+        barcodeEntryGroup.style.display = 'flex';
+    } else {
+        barcodeEntryGroup.style.display = 'none';
+        document.getElementById('barcode').value = '';
+    }
+}
+
+// --- Variant & Modifier Logic ---
+function applyPriceToAllVariants() {
+    const masterPriceInput = document.getElementById('masterVariantPrice');
+    const masterPrice = parseFloat(masterPriceInput.value);
+
+    if (isNaN(masterPrice) || masterPrice < 0) {
+        showModal('Please enter a valid price to apply.', 'error');
+        return;
+    }
+
+    currentVariants.forEach(variant => {
+        variant.sellingPrice = masterPrice.toFixed(2);
+    });
+
+    renderVariants(); // Re-render to show the updated prices
+}
+
+function addVariantRow() {
+    currentVariants.push({ name: '', sellingPrice: '', costPrice: '' });
+    updateRequiredFields();
+    renderVariants();
+    renderModifiers();
+}
+
+function removeVariantRow(index) {
+    currentVariants.splice(index, 1);
+    updateRequiredFields();
+    renderVariants();
+    renderModifiers();
+}
+
+function updateVariant(index, field, value) {
+    currentVariants[index][field] = value;
+}
+
+function addModifierRow() {
+    currentModifiers.push({ name: '', price: 0, variantLink: '' });
+    renderModifiers();
+}
+
+function removeModifierRow(index) {
+    currentModifiers.splice(index, 1);
+    renderModifiers();
+}
+
+function updateModifier(index, field, value) {
+    currentModifiers[index][field] = value;
+}
+
+function renderVariants() {
+    const selectedType = productTypeSelect.value;
+    const applyAllContainer = document.getElementById('applyAllContainer');
+    
+    if (currentVariants.length > 0) {
+        applyAllContainer.style.display = 'flex';
+    } else {
+        applyAllContainer.style.display = 'none';
+    }
+
+    variantsContainer.innerHTML = '';
+    currentVariants.forEach((variant, variantIndex) => {
+        const variantWrapper = document.createElement('div');
+        variantWrapper.className = 'variant-row';
+
+        const row = document.createElement('div');
+        row.className = 'dynamic-row';
+        
+        const nameTextarea = document.createElement('textarea');
+        nameTextarea.placeholder = 'Variant Name* (e.g., size: small)';
+        nameTextarea.value = variant.name;
+        nameTextarea.rows = 2;
+        nameTextarea.oninput = (e) => {
+            updateVariant(variantIndex, 'name', e.target.value);
+            renderModifiers(); // Re-render modifiers to update dropdown text
+        };
+        row.appendChild(nameTextarea);
+
+        const sellingPriceInput = document.createElement('input');
+        sellingPriceInput.type = 'number';
+        sellingPriceInput.step = '0.01';
+        sellingPriceInput.placeholder = 'Selling Price';
+        sellingPriceInput.value = variant.sellingPrice;
+        sellingPriceInput.oninput = (e) => updateVariant(variantIndex, 'sellingPrice', e.target.value);
+        row.appendChild(sellingPriceInput);
+
+        if (selectedType === 'rawMaterial' || selectedType === 'finishedGood & rawMaterial') {
+            const costPriceInput = document.createElement('input');
+            costPriceInput.type = 'number';
+            costPriceInput.step = '0.01';
+            costPriceInput.placeholder = 'Cost Price*';
+            costPriceInput.value = variant.costPrice;
+            costPriceInput.oninput = (e) => updateVariant(variantIndex, 'costPrice', e.target.value);
+            row.appendChild(costPriceInput);
+        }
+
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'btn-remove';
+        removeBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"><path d="M3 6v18h18v-18h-18zm5 14c0 .552-.448 1-1 1s-1-.448-1-1v-10c0-.552.448-1 1-1s1 .448 1 1v10zm5 0c0 .552-.448 1-1 1s-1-.448-1-1v-10c0-.552.448-1 1-1s1 .448 1 1v10zm5 0c0 .552-.448 1-1 1s-1-.448-1-1v-10c0-.552.448-1 1-1s1 .448 1 1v10zm4-18h-20v-2h6v-1.5c0-.827.673-1.5 1.5-1.5h5c.825 0 1.5.671 1.5 1.5v1.5h6v2z"/></svg>`;
+        removeBtn.onclick = () => removeVariantRow(variantIndex);
+        row.appendChild(removeBtn);
+        
+        variantWrapper.appendChild(row);
+        variantsContainer.appendChild(variantWrapper);
+    });
+}
+
+function renderModifiers() {
+    modifiersContainer.innerHTML = '';
+    currentModifiers.forEach((modifier, modifierIndex) => {
+        const row = document.createElement('div');
+        row.className = 'modifier-row';
+        
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.placeholder = 'Modifier Name';
+        nameInput.value = modifier.name;
+        nameInput.oninput = (e) => updateModifier(modifierIndex, 'name', e.target.value);
+        row.appendChild(nameInput);
+
+        const priceInput = document.createElement('input');
+        priceInput.type = 'number';
+        priceInput.step = '0.01';
+        priceInput.placeholder = 'Price';
+        priceInput.value = modifier.price;
+        priceInput.oninput = (e) => updateModifier(modifierIndex, 'price', e.target.value);
+        row.appendChild(priceInput);
+
+        if (currentVariants.length > 0) {
+            const variantSelect = document.createElement('select');
+            variantSelect.onchange = (e) => updateModifier(modifierIndex, 'variantLink', e.target.value);
+            
+            const defaultOption = document.createElement('option');
+            defaultOption.value = "";
+            defaultOption.textContent = "-- Select Variant* --";
+            defaultOption.disabled = true;
+            variantSelect.appendChild(defaultOption);
+
+            const allOption = document.createElement('option');
+            allOption.value = "all";
+            allOption.textContent = "All Variants";
+            variantSelect.appendChild(allOption);
+
+            currentVariants.forEach((v, i) => {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = v.name.trim() || `Variant #${i + 1}`;
+                variantSelect.appendChild(option);
+            });
+            
+            variantSelect.value = modifier.variantLink;
+            row.appendChild(variantSelect);
+        }
+
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'btn-remove';
+        removeBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"><path d="M3 6v18h18v-18h-18zm5 14c0 .552-.448 1-1 1s-1-.448-1-1v-10c0-.552.448-1 1-1s1 .448 1 1v10zm5 0c0 .552-.448 1-1 1s-1-.448-1-1v-10c0-.552.448-1 1-1s1 .448 1 1v10zm5 0c0 .552-.448 1-1 1s-1-.448-1-1v-10c0-.552.448-1 1-1s1 .448 1 1v10zm4-18h-20v-2h6v-1.5c0-.827.673-1.5 1.5-1.5h5c.825 0 1.5.671 1.5 1.5v1.5h6v2z"/></svg>`;
+        removeBtn.onclick = () => removeModifierRow(modifierIndex);
+        row.appendChild(removeBtn);
+        
+        modifiersContainer.appendChild(row);
+    });
+}
+
+
+// --- Main Application Logic ---
+function addProduct() {
+    if (!defaultsSet) {
+        showModal("Please set the Session Defaults before adding products.", "error");
+        return;
+    }
+
+    // --- Validation and Error Checking ---
+    const errors = validateForm();
+    if (errors.length > 0) {
+        showModal("Please fix the following issues:\n\n- " + errors.join("\n- "), "error");
+        return;
+    }
+
+    // --- Warning Checks ---
+    const hasEmptyPriceVariant = currentVariants.length > 0 && currentVariants.some(v => v.sellingPrice.trim() === '');
+    if (hasEmptyPriceVariant) {
+        showModal(
+            'Some variants have no selling price and will be set to R0. Do you want to continue?',
+            'warning',
+            () => {
+                createProducts();
+            },
+            true
+        );
+    } else {
+        createProducts();
+    }
+}
+
+function validateForm() {
+    const baseProductName = document.getElementById("productName").value.trim();
+    const uom = document.getElementById("uom").value;
+    const prep = document.getElementById("prepLocation").value.trim();
+    const menu = document.getElementById("menuCategory").value.trim();
+    const productType = document.getElementById("productType").value;
+    const invCat = document.getElementById("inventoryCategory").value.trim();
+    const suppliedQuantity = document.getElementById("suppliedQuantity").value.trim();
+    const yieldQuantity = document.getElementById("yieldQuantity").value.trim();
+    const defaultCost = parseFloat(document.getElementById("costPrice").value);
+    const defaultPrice = parseFloat(document.getElementById("sellingPrice").value);
+    const taxApplicable = document.getElementById("taxApplicable").value;
+    const hasBarcode = document.getElementById("hasBarcode").value;
+    const barcode = (hasBarcode === 'yes') ? document.getElementById("barcode").value.trim() : "";
+    const customPlu = document.getElementById("customPlu").value.trim();
+
+    let errors = [];
+    if (baseProductName === "") errors.push("Product Name is required.");
+    if (!uom) errors.push("Selling UOM is required.");
+    if (productType !== 'rawMaterial' && productType !== 'Manufactured' && prep === "") errors.push("Preparation Location is required.");
+    if (productType !== 'rawMaterial' && productType !== 'Manufactured' && menu === "") errors.push("Menu Category is required.");
+    if (!productType) errors.push("Product Type is required.");
+    if (!taxApplicable) errors.push("Tax Applicable is required.");
+
+    if (currentVariants.length === 1) {
+        errors.push("If you add variants, you must add at least two. To create a single product, remove the variant.");
+    }
+
+    if (currentVariants.length === 0) {
+        if (productType === 'finishedGood' && isNaN(defaultPrice)) {
+            errors.push("A Default Selling Price is required if no variants are added.");
+        }
+        if ((productType === 'rawMaterial' || productType === 'finishedGood & rawMaterial') && isNaN(defaultCost)) {
+            errors.push("A Default Cost Price is required if no variants are added.");
+        }
+    }
+
+    if (productType === 'rawMaterial' || productType === 'finishedGood & rawMaterial') {
+        if(invCat === "") errors.push("Inventory Category is required for this product type.");
+        if(suppliedQuantity === "") errors.push("Supplied Quantity is required for this product type.");
+    }
+    if (productType === 'Manufactured') {
+        if(invCat === "") errors.push("Inventory Category is required for this product type.");
+        if(yieldQuantity === "") errors.push("Yield Quantity is required for this product type.");
+    }
+
+    if (hasBarcode === 'yes' && barcode === "") {
+        errors.push("Barcode is required when 'Has Barcode?' is set to Yes.");
+    }
+    if (sessionDefinePlu === 'yes' && customPlu === "") {
+        errors.push("Custom PLU/SKU is required when manual entry is selected.");
+    }
+    if (sessionDefinePlu === 'yes' && products.some(p => p["Product PLU"] === customPlu)) {
+        errors.push(`PLU/SKU "${customPlu}" already exists.`);
+    }
+
+    if (sessionDefinePlu === 'yes' && currentVariants.length > 1) {
+        errors.push("Manual PLU/SKU entry is only supported for products without multiple variants.");
+    }
+    
+    currentVariants.forEach((variant, index) => {
+        if (variant.name.trim() === '') {
+            errors.push(`Name is required for variant #${index + 1}.`);
+        }
+        if ((productType === 'rawMaterial' || productType === 'finishedGood & rawMaterial') && variant.costPrice.trim() === '') {
+            errors.push(`Cost price is required for variant "${variant.name || `(variant #${index + 1})`}".`);
+        }
+    });
+
+    if (currentVariants.length > 0) {
+        currentModifiers.forEach((modifier, index) => {
+            if (modifier.variantLink === '') {
+                errors.push(`You must select a variant for modifier "${modifier.name || `(modifier #${index + 1})`}".`);
+            }
+        });
+    }
+
+    return errors;
+}
+
+function createProducts() {
+  const form = document.getElementById('productForm');
+  const baseProductName = document.getElementById("productName").value.trim();
+  const uom = document.getElementById("uom").value;
+  const prep = document.getElementById("prepLocation").value.trim();
+  const menu = document.getElementById("menuCategory").value.trim();
+  const productType = document.getElementById("productType").value;
+  const invCat = document.getElementById("inventoryCategory").value.trim();
+  const invSub = document.getElementById("inventorySubCategory").value.trim();
+  const suppliedQuantity = document.getElementById("suppliedQuantity").value.trim();
+  const yieldQuantity = document.getElementById("yieldQuantity").value.trim();
+  const defaultCost = parseFloat(document.getElementById("costPrice").value);
+  const defaultPrice = parseFloat(document.getElementById("sellingPrice").value);
+  const taxApplicable = document.getElementById("taxApplicable").value;
+  const hasBarcode = document.getElementById("hasBarcode").value;
+  const barcode = (hasBarcode === 'yes') ? document.getElementById("barcode").value.trim() : "";
+  const customPlu = document.getElementById("customPlu").value.trim();
+
+  let variantsToProcess = currentVariants.length > 0 ? currentVariants : [{ name: '', sellingPrice: '', costPrice: ''}];
+  
+  let potentialProductsToAdd = [];
+  let nameErrors = [];
+  variantsToProcess.forEach((variant, variantIndex) => {
+      let finalName;
+      let prefixedBaseName = baseProductName;
+
+      if (productType === "rawMaterial") {
+        prefixedBaseName = "(RAW) " + baseProductName;
+      } else if (productType === "Manufactured") {
+        prefixedBaseName = "(MAN) " + baseProductName;
+      }
+
+      if (variant.name.trim() !== "") {
+          finalName = `${prefixedBaseName} - Options: ${variant.name.trim()}`;
+      } else {
+          finalName = prefixedBaseName;
+      }
+      
+      if (products.some(p => p["Product Name & Variant"] === finalName)) {
+          nameErrors.push(`Product "${finalName}" already exists.`);
+      }
+      
+      let modifierString = '';
+      if (currentVariants.length > 0) {
+          const applicableModifiers = currentModifiers.filter(m => m.variantLink === 'all' || m.variantLink == variantIndex);
+          modifierString = applicableModifiers
+            .filter(m => m.name.trim() !== "")
+            .map(m => `${m.name.trim()} (${parseFloat(m.price || 0).toFixed(2)})`)
+            .join(', ');
+      } else {
+          modifierString = currentModifiers
+            .filter(m => m.name.trim() !== "")
+            .map(m => `${m.name.trim()} (${parseFloat(m.price || 0).toFixed(2)})`)
+            .join(', ');
+      }
+
+      potentialProductsToAdd.push({
+          baseName: baseProductName,
+          prefixedName: prefixedBaseName,
+          variantName: variant.name.trim(),
+          finalName: finalName,
+          sellingPrice: variant.sellingPrice.trim() !== '' ? parseFloat(variant.sellingPrice) : defaultPrice,
+          costPrice: variant.costPrice.trim() !== '' ? parseFloat(variant.costPrice) : defaultCost,
+          modifierString: modifierString
+      });
+  });
+
+  if (nameErrors.length > 0) {
+      showModal("Please fix the following issues:\n\n- " + nameErrors.join("\n- "), "error");
+      return;
+  }
+
+  const newProductStartIndex = products.length;
+
+  let internalProductType = 'single';
+  if (productType === 'Manufactured') {
+      internalProductType = 'preparation';
+  }
+
+  potentialProductsToAdd.forEach(item => {
+    const finalPrice = isNaN(item.sellingPrice) ? 0 : item.sellingPrice;
+    const finalCost = isNaN(item.costPrice) ? 0 : item.costPrice;
+    const gp = (finalPrice > 0) ? ((finalPrice - finalCost) / finalPrice) * 100 : 0;
+    
+    const productPlu = (sessionDefinePlu === 'yes') ? customPlu : "PLU-" + (++pluCounter);
+    const product = {
+      "Product PLU": productPlu,
+      "Product Name & Variant": item.finalName,
+      "Base Name": item.prefixedName,
+      "Variant Name": item.variantName,
+      "Original Product Type": productType,
+      "Site": sessionSite,
+      "GP": gp,
+      "Selling UOM": uom,
+      "Preparation Location": prep,
+      "Menu Category": menu,
+      "Inventory Category": invCat,
+      "Inventory Sub-Category": invSub,
+      "Product Type": internalProductType,
+      "Supplied Quantity": (productType === 'rawMaterial' || productType === 'finishedGood & rawMaterial') ? suppliedQuantity : '',
+      "Manufactured Yield": (productType === 'Manufactured') ? yieldQuantity : '',
+      "Enabled": true,
+      "Cost Price": finalCost,
+      "Selling Price": finalPrice,
+      "Dynamic Price": false,
+      "Visible on App": false,
+      "Default Selling Location": "Default Selling Location",
+      "Default Storage Location": "Default Storage Location",
+      "Tax Applicable": taxApplicable === 'true',
+      "Modifier": item.modifierString,
+      "Barcode": barcode
+    };
+    products.push(product);
+  });
+
+  if (potentialProductsToAdd.length > 0) {
+    saveState();
+    updateTable(newProductStartIndex);
+    addToDatalist("prepList", prep);
+    addToDatalist("menuList", menu);
+    addToDatalist("inventoryCategoryList", invCat);
+    addToDatalist("inventorySubCategoryList", invSub);
+    
+    form.reset();
+
+    currentModifiers = [];
+    currentVariants = [];
+    renderModifiers();
+    renderVariants();
+    updateRequiredFields();
+    handleBarcodeVisibility();
+    document.getElementById("productName").focus();
+  }
+}
+
+function updateTable(newProductStartIndex = -1) {
+  const tbody = document.querySelector("#productTable tbody");
+  tbody.innerHTML = "";
+  products.forEach((p, index) => {
+    const row = document.createElement("tr");
+
+    if (index >= newProductStartIndex) {
+        row.classList.add('new-row');
+    }
+    
+    const columnOrder = [
+        "Product PLU", "Base Name", "Variant Name", "Site", "GP", "Selling UOM",
+        "Preparation Location", "Menu Category", "Inventory Category", "Inventory Sub-Category",
+        "Product Type", "Enabled", "Cost Price", "Selling Price", "Dynamic Price",
+        "Visible on App", "Default Selling Location", "Default Storage Location",
+        "Tax Applicable", "Modifier", "Barcode"
+    ];
+
+    columnOrder.forEach(key => {
+        const cell = document.createElement("td");
+        let value = p[key];
+
+        if (key === "GP" || key === "Cost Price" || key === "Selling Price") {
+            value = value.toFixed(2);
+        } else if (key === "Variant Name" && value) {
+            value = `Options: ${value}`;
+        }
+        
+        cell.textContent = value;
+        row.appendChild(cell);
+    });
+
+    const removeCell = document.createElement("td");
+    const btn = document.createElement("button");
+    btn.className = "btn-remove";
+    btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"><path d="M3 6v18h18v-18h-18zm5 14c0 .552-.448 1-1 1s-1-.448-1-1v-10c0-.552.448-1 1-1s1 .448 1 1v10zm5 0c0 .552-.448 1-1 1s-1-.448-1-1v-10c0-.552.448-1 1-1s1 .448 1 1v10zm5 0c0 .552-.448 1-1 1s-1-.448-1-1v-10c0-.552.448-1 1-1s1 .448 1 1v10zm4-18h-20v-2h6v-1.5c0-.827.673-1.5 1.5-1.5h5c.825 0 1.5.671 1.5 1.5v1.5h6v2z"/></svg>`;
+    btn.onclick = () => {
+        showModal(
+            `Are you sure you want to remove "${p["Product Name & Variant"]}"?`,
+            'warning',
+            () => {
+                products.splice(index, 1);
+                saveState();
+                updateTable();
+            },
+            true
+        );
+    };
+    removeCell.appendChild(btn);
+    row.appendChild(removeCell);
+    tbody.appendChild(row);
+  });
+
+  if (newProductStartIndex !== -1) {
+      setTimeout(() => {
+          const newRows = document.querySelectorAll('.new-row');
+          newRows.forEach(row => row.classList.remove('new-row'));
+      }, 2500);
+  }
+}
+
+function exportToExcel() {
+  if (products.length === 0) {
+    showModal("No products to export!", "warning");
+    return;
+  }
+  
+  const exportData = products.map(p => {
+    let inventoryCategory = p["Inventory Category"];
+    if (inventoryCategory) { 
+        switch (p["Original Product Type"]) {
+            case "finishedGood":
+                inventoryCategory += " - FINISHED GOOD";
+                break;
+            case "rawMaterial":
+            case "finishedGood & rawMaterial": 
+                inventoryCategory += " - RAW MATERIALS";
+                break;
+            case "Manufactured":
+                inventoryCategory += " - MANUFACTURED";
+                break;
+        }
+    }
+
+    let finalCostPrice = p["Cost Price"];
+    if ((p["Original Product Type"] === 'rawMaterial' || p["Original Product Type"] === 'finishedGood & rawMaterial') && p["Supplied Quantity"] && p["Supplied Quantity"] > 0) {
+        finalCostPrice = p["Cost Price"] / p["Supplied Quantity"];
+    }
+
+
+    return {
+      "Product PLU": p["Product PLU"],
+      "Product Name & Variant": p["Product Name & Variant"],
+      "Site": p.Site,
+      "GP": p["GP"],
+      "Selling UOM": p["Selling UOM"],
+      "Preparation Location": p["Preparation Location"],
+      "Menu Category": p["Menu Category"],
+      "Inventory Category": inventoryCategory,
+      "Inventory Sub-Category": p["Inventory Sub-Category"],
+      "Product Type": p["Product Type"],
+      "Enabled": p.Enabled,
+      "Cost Price": finalCostPrice,
+      "Selling Price": p["Selling Price"],
+      "Dynamic Price": p["Dynamic Price"],
+      "Visible on App": p["Visible on App"],
+      "Default Selling Location": p["Default Selling Location"],
+      "Default Storage Location": p["Default Storage Location"],
+      "Tax Applicable": p["Tax Applicable"],
+      "Modifier": p.Modifier,
+      "Barcode": p.Barcode,
+      "Supplied Quantity": p["Supplied Quantity"] ? `${p["Supplied Quantity"]} ${p["Selling UOM"]}` : '',
+      "Supplied Quantity Cost Price": p["Supplied Quantity"] ? p["Cost Price"] : '',
+      "Manufactured Yield": p["Manufactured Yield"],
+      "Product PLU (End)": p["Product PLU"],
+      "Product Name": p["Base Name"],
+      "Variant": p["Variant Name"] ? `Options: ${p["Variant Name"]}` : "",
+      "Listed Product Type": p["Original Product Type"]
+    };
+  });
+  
+  const createProductStructureData = products.map(p => {
+    return {
+        "Product PLU": p["Product PLU"],
+        "Name": p["Base Name"],
+        "Variants": p["Variant Name"] ? `Options: ${p["Variant Name"]}` : "",
+        "Menu Categories": p["Menu Category"],
+        "Inventory Type": p["Original Product Type"],
+        "Tags": "", // New field, leave blank
+        "Selling UOM": p["Selling UOM"],
+        "Tax Applicable": p["Tax Applicable"],
+        "Show on Royalty": false, // New field, default to false
+        "Inventory Category": p["Inventory Category"],
+        "Inventory Sub-Category": p["Inventory Sub-Category"],
+        "Barcodes": p.Barcode,
+        "Product SKU": p["Product PLU"], // Same as PLU
+        "Description": "" // New field, leave blank
+    };
+  });
+
+  const ws1 = XLSX.utils.json_to_sheet(exportData);
+  const ws2 = XLSX.utils.json_to_sheet(createProductStructureData);
+  
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws1, "Site Product Structure");
+  XLSX.utils.book_append_sheet(wb, ws2, "Create Product structure");
+
+  XLSX.writeFile(wb, "products.xlsx");
+
+  showModal(
+      'Export successful! Would you like to clear all data from the form?',
+      'warning',
+      () => {
+          clearAllData();
+      },
+      true
+  );
+}
+
+function addToDatalist(id, value) {
+  if (!value) return;
+  const datalist = document.getElementById(id);
+  const options = [...datalist.options].map(o => o.value);
+  if (!options.includes(value)) {
+    const opt = document.createElement("option");
+    opt.value = value;
+    datalist.appendChild(opt);
+  }
+}
+
+</script>
+
+</body>
+</html>
