@@ -880,10 +880,13 @@ productTypeSelect.addEventListener('change', () => {
 inventoryCategoryInput.addEventListener('input', handleInventoryCategoryChange);
 hasBarcodeSelect.addEventListener('change', handleBarcodeVisibility);
 
+// *** MODIFICATION START ***
 document.addEventListener('DOMContentLoaded', () => {
     loadState();
     updateRequiredFields();
+    updateTable(); // Ensure table is populated on initial load
 });
+// *** MODIFICATION END ***
 
 
 // --- Data Persistence ---
@@ -933,7 +936,7 @@ function loadState() {
     menuCategories.forEach(menu => addToDatalist("menuList", menu));
     invCategories.forEach(cat => addToDatalist("inventoryCategoryList", cat));
     invSubCategories.forEach(sub => addToDatalist("inventorySubCategoryList", sub));
-    updateTable();
+    // updateTable(); // This call is moved to DOMContentLoaded
   }
 }
 
@@ -1050,7 +1053,12 @@ function updateRequiredFields() {
 
     if (currentVariants.length > 0) {
         sellingPriceGroup.style.display = 'none';
-        costPriceGroup.style.display = 'none';
+        // For finishedGood & rawMaterial, we want the main cost price, not variant cost prices
+        if (selectedType === 'finishedGood & rawMaterial' || selectedType === 'rawMaterial') {
+            costPriceGroup.style.display = 'flex';
+        } else {
+            costPriceGroup.style.display = 'none';
+        }
     } else {
         sellingPriceGroup.style.display = 'flex';
         costPriceGroup.style.display = 'flex';
@@ -1074,7 +1082,6 @@ function updateRequiredFields() {
     
     } else if (selectedType === 'finishedGood & rawMaterial') {
         costPriceLabel.innerHTML = `<span class="tooltip">Default Cost Price${baseTooltip('This cost price is for the entire supplied quantity. The export will calculate the price per selected UOM.')}</span>`;
-        // sellingPriceGroup is now visible by default
         inventoryCategoryLabel.innerHTML = `<span class="tooltip">Inventory Category <span class="required-star">*</span>${baseTooltip('A broad category for stock management. E.g., "Food", "Beverages".')}</span>`;
         inventorySubCategoryLabel.innerHTML = `<span class="tooltip">Inventory Sub-Category (Recommended)${baseTooltip('A more specific category for stock. Suggestions will appear based on the Inventory Category.')}</span>`;
         suppliedQuantityGroup.style.display = 'flex';
@@ -1221,7 +1228,8 @@ function renderVariants() {
         sellingPriceInput.oninput = (e) => updateVariant(variantIndex, 'sellingPrice', e.target.value);
         row.appendChild(sellingPriceInput);
 
-        if (selectedType === 'rawMaterial' || selectedType === 'finishedGood & rawMaterial') {
+        // Only show cost price on variant for rawMaterial type (which can't have variants anyway, but for logical consistency)
+        if (selectedType === 'rawMaterial') {
             const costPriceInput = document.createElement('input');
             costPriceInput.type = 'number';
             costPriceInput.step = '0.01';
@@ -1395,7 +1403,8 @@ function validateForm() {
         if (variant.name.trim() === '') {
             errors.push(`Name is required for variant #${index + 1}.`);
         }
-        if ((productType === 'rawMaterial' || productType === 'finishedGood & rawMaterial') && variant.costPrice.trim() === '') {
+        // Cost price on variant is only required for rawMaterial type
+        if (productType === 'rawMaterial' && variant.costPrice.trim() === '') {
             errors.push(`Cost price is required for variant "${variant.name || `(variant #${index + 1})`}".`);
         }
     });
@@ -1429,104 +1438,126 @@ function createProducts() {
   const barcode = (hasBarcode === 'yes') ? document.getElementById("barcode").value.trim() : "";
   const customPlu = document.getElementById("customPlu").value.trim();
 
-  let variantsToProcess = currentVariants.length > 0 ? currentVariants : [{ name: '', sellingPrice: '', costPrice: ''}];
-  
-  let potentialProductsToAdd = [];
-  let nameErrors = [];
-  variantsToProcess.forEach((variant, variantIndex) => {
-      let finalName;
-      let prefixedBaseName = baseProductName;
-
-      if (productType === "rawMaterial") {
-        prefixedBaseName = "(RAW) " + baseProductName;
-      } else if (productType === "Manufactured") {
-        prefixedBaseName = "(MAN) " + baseProductName;
-      }
-
-      if (variant.name.trim() !== "") {
-          finalName = `${prefixedBaseName} - Options: ${variant.name.trim()}`;
-      } else {
-          finalName = prefixedBaseName;
-      }
-      
-      if (products.some(p => p["Product Name & Variant"] === finalName)) {
-          nameErrors.push(`Product "${finalName}" already exists.`);
-      }
-      
-      let modifierString = '';
-      if (currentVariants.length > 0) {
-          const applicableModifiers = currentModifiers.filter(m => m.variantLink === 'all' || m.variantLink == variantIndex);
-          modifierString = applicableModifiers
-            .filter(m => m.name.trim() !== "")
-            .map(m => `${m.name.trim()} (${parseFloat(m.price || 0).toFixed(2)})`)
-            .join(', ');
-      } else {
-          modifierString = currentModifiers
-            .filter(m => m.name.trim() !== "")
-            .map(m => `${m.name.trim()} (${parseFloat(m.price || 0).toFixed(2)})`)
-            .join(', ');
-      }
-
-      potentialProductsToAdd.push({
-          baseName: baseProductName,
-          prefixedName: prefixedBaseName,
-          variantName: variant.name.trim(),
-          finalName: finalName,
-          sellingPrice: variant.sellingPrice.trim() !== '' ? parseFloat(variant.sellingPrice) : defaultPrice,
-          costPrice: variant.costPrice.trim() !== '' ? parseFloat(variant.costPrice) : defaultCost,
-          modifierString: modifierString
-      });
-  });
-
-  if (nameErrors.length > 0) {
-      showModal("Please fix the following issues:\n\n- " + nameErrors.join("\n- "), "error");
-      return;
-  }
-
   const newProductStartIndex = products.length;
 
-  let internalProductType = 'single';
-  if (productType === 'Manufactured') {
-      internalProductType = 'preparation';
+  // --- Handle 'finishedGood & rawMaterial' Type ---
+  if (productType === 'finishedGood & rawMaterial') {
+      let productsAddedInThisBatch = [];
+
+      // Create the finished good items from variants
+      let variantsToProcess = currentVariants.length > 0 ? currentVariants : [{ name: '', sellingPrice: defaultPrice }];
+      
+      variantsToProcess.forEach(variant => {
+          const finalName = variant.name.trim() !== "" ? `${baseProductName} - ${variant.name.trim()}` : baseProductName;
+          
+          if (products.some(p => p["Product Name & Variant"] === finalName) || productsAddedInThisBatch.some(p => p["Product Name & Variant"] === finalName)) {
+              showModal(`Product "${finalName}" already exists.`, "error");
+              return;
+          }
+
+          const newProduct = createProductObject({
+              baseName: baseProductName,
+              variantName: variant.name.trim(),
+              finalName: finalName,
+              sellingPrice: variant.sellingPrice || defaultPrice,
+              costPrice: 0, // Finished goods have no direct cost price in this model
+              uom: 'ea', // Finished goods are 'Each'
+              productType: 'finishedGood',
+          });
+          products.push(newProduct);
+          productsAddedInThisBatch.push(newProduct);
+      });
+
+      // Create the associated raw material item
+      const rawName = `(RAW) ${baseProductName}`;
+      if (!products.some(p => p["Product Name & Variant"] === rawName) && !productsAddedInThisBatch.some(p => p["Product Name & Variant"] === rawName)) {
+          products.push(createProductObject({
+              baseName: rawName,
+              variantName: '',
+              finalName: rawName,
+              sellingPrice: 0,
+              costPrice: defaultCost,
+              uom: uom, // Use the UOM selected for the raw material
+              productType: 'rawMaterial',
+              suppliedQuantity: suppliedQuantity,
+          }));
+      } else {
+           showModal(`Product "${rawName}" already exists.`, "error");
+      }
+
+  // --- Handle all other Product Types ---
+  } else {
+      let variantsToProcess = currentVariants.length > 0 ? currentVariants : [{ name: '', sellingPrice: '', costPrice: ''}];
+      
+      let potentialProductsToAdd = [];
+      let nameErrors = [];
+      variantsToProcess.forEach((variant, variantIndex) => {
+          let finalName;
+          let prefixedBaseName = baseProductName;
+
+          if (productType === "rawMaterial") {
+            prefixedBaseName = "(RAW) " + baseProductName;
+          } else if (productType === "Manufactured") {
+            prefixedBaseName = "(MAN) " + baseProductName;
+          }
+
+          if (variant.name.trim() !== "") {
+              finalName = `${prefixedBaseName} - Options: ${variant.name.trim()}`;
+          } else {
+              finalName = prefixedBaseName;
+          }
+          
+          if (products.some(p => p["Product Name & Variant"] === finalName)) {
+              nameErrors.push(`Product "${finalName}" already exists.`);
+          }
+          
+          let modifierString = '';
+          if (currentVariants.length > 0) {
+              const applicableModifiers = currentModifiers.filter(m => m.variantLink === 'all' || m.variantLink == variantIndex);
+              modifierString = applicableModifiers
+                .filter(m => m.name.trim() !== "")
+                .map(m => `${m.name.trim()} (${parseFloat(m.price || 0).toFixed(2)})`)
+                .join(', ');
+          } else {
+              modifierString = currentModifiers
+                .filter(m => m.name.trim() !== "")
+                .map(m => `${m.name.trim()} (${parseFloat(m.price || 0).toFixed(2)})`)
+                .join(', ');
+          }
+
+          potentialProductsToAdd.push({
+              baseName: baseProductName,
+              prefixedBaseName: prefixedBaseName,
+              variantName: variant.name.trim(),
+              finalName: finalName,
+              sellingPrice: variant.sellingPrice.trim() !== '' ? parseFloat(variant.sellingPrice) : defaultPrice,
+              costPrice: variant.costPrice.trim() !== '' ? parseFloat(variant.costPrice) : defaultCost,
+              modifierString: modifierString
+          });
+      });
+
+      if (nameErrors.length > 0) {
+          showModal("Please fix the following issues:\n\n- " + nameErrors.join("\n- "), "error");
+          return;
+      }
+
+      potentialProductsToAdd.forEach(item => {
+          products.push(createProductObject({
+              baseName: item.prefixedName,
+              variantName: item.variantName,
+              finalName: item.finalName,
+              sellingPrice: item.sellingPrice,
+              costPrice: item.costPrice,
+              modifierString: item.modifierString,
+              uom: uom,
+              productType: productType,
+              suppliedQuantity: (productType === 'rawMaterial') ? suppliedQuantity : '',
+              yieldQuantity: (productType === 'Manufactured') ? yieldQuantity : ''
+          }));
+      });
   }
 
-  potentialProductsToAdd.forEach(item => {
-    const finalPrice = isNaN(item.sellingPrice) ? 0 : item.sellingPrice;
-    const finalCost = isNaN(item.costPrice) ? 0 : item.costPrice;
-    const gp = (finalPrice > 0) ? ((finalPrice - finalCost) / finalPrice) * 100 : 0;
-    
-    const productPlu = (sessionDefinePlu === 'yes') ? customPlu : "PLU-" + (++pluCounter);
-    const product = {
-      "Product PLU": productPlu,
-      "Product Name & Variant": item.finalName,
-      "Base Name": item.prefixedName,
-      "Variant Name": item.variantName,
-      "Original Product Type": productType,
-      "Site": sessionSite,
-      "GP": gp,
-      "Selling UOM": uom,
-      "Preparation Location": prep,
-      "Menu Category": menu,
-      "Inventory Category": invCat,
-      "Inventory Sub-Category": invSub,
-      "Product Type": internalProductType,
-      "Supplied Quantity": (productType === 'rawMaterial' || productType === 'finishedGood & rawMaterial') ? suppliedQuantity : '',
-      "Manufactured Yield": (productType === 'Manufactured') ? yieldQuantity : '',
-      "Enabled": true,
-      "Cost Price": finalCost,
-      "Selling Price": finalPrice,
-      "Dynamic Price": false,
-      "Visible on App": false,
-      "Default Selling Location": "Default Selling Location",
-      "Default Storage Location": "Default Storage Location",
-      "Tax Applicable": taxApplicable === 'true',
-      "Modifier": item.modifierString,
-      "Barcode": barcode
-    };
-    products.push(product);
-  });
-
-  if (potentialProductsToAdd.length > 0) {
+  if (products.length > newProductStartIndex) {
     saveState();
     updateTable(newProductStartIndex);
     addToDatalist("prepList", prep);
@@ -1545,6 +1576,71 @@ function createProducts() {
     document.getElementById("productName").focus();
   }
 }
+
+function createProductObject(data) {
+    const {
+        baseName,
+        variantName,
+        finalName,
+        sellingPrice,
+        costPrice,
+        modifierString = '',
+        uom,
+        productType,
+        suppliedQuantity = '',
+        yieldQuantity = ''
+    } = data;
+
+    const prep = document.getElementById("prepLocation").value.trim();
+    const menu = document.getElementById("menuCategory").value.trim();
+    const invCat = document.getElementById("inventoryCategory").value.trim();
+    const invSub = document.getElementById("inventorySubCategory").value.trim();
+    const taxApplicable = document.getElementById("taxApplicable").value;
+    const hasBarcode = document.getElementById("hasBarcode").value;
+    const barcode = (hasBarcode === 'yes') ? document.getElementById("barcode").value.trim() : "";
+    const customPlu = document.getElementById("customPlu").value.trim();
+
+    const finalPrice = isNaN(sellingPrice) ? 0 : sellingPrice;
+    const finalCost = isNaN(costPrice) ? 0 : costPrice;
+
+    const gp = (finalPrice > 0) ? ((finalPrice - finalCost) / finalPrice) * 100 : 0;
+    
+    const productPlu = (sessionDefinePlu === 'yes' && currentVariants.length <= 1) ? customPlu : "PLU-" + (++pluCounter);
+    
+    let internalProductType = 'single';
+    if (productType === 'Manufactured' || productType === 'rawMaterial') {
+        internalProductType = 'preparation';
+    }
+
+    return {
+      "Product PLU": productPlu,
+      "Product Name & Variant": finalName,
+      "Base Name": baseName,
+      "Variant Name": variantName,
+      "Original Product Type": productType,
+      "Site": sessionSite,
+      "GP": gp,
+      "Selling UOM": uom,
+      "Preparation Location": (productType === 'rawMaterial' || productType === 'Manufactured') ? '' : prep,
+      "Menu Category": (productType === 'rawMaterial' || productType === 'Manufactured') ? '' : menu,
+      "Inventory Category": invCat,
+      "Inventory Sub-Category": invSub,
+      "Product Type": internalProductType,
+      "Supplied Quantity": suppliedQuantity,
+      "Manufactured Yield": yieldQuantity,
+      "Enabled": true,
+      "Cost Price": finalCost,
+      "Selling Price": finalPrice,
+      "Dynamic Price": false,
+      "Visible on App": false,
+      "Default Selling Location": "Default Selling Location",
+      "Default Storage Location": "Default Storage Location",
+      "Tax Applicable": taxApplicable === 'true',
+      "Modifier": modifierString,
+      "Barcode": barcode
+    };
+}
+
 
 function updateTable(newProductStartIndex = -1) {
   const tbody = document.querySelector("#productTable tbody");
@@ -1568,7 +1664,7 @@ function updateTable(newProductStartIndex = -1) {
         const cell = document.createElement("td");
         let value = p[key];
 
-        if (key === "GP" || key === "Cost Price" || key === "Selling Price") {
+        if ((key === "GP" || key === "Cost Price" || key === "Selling Price") && typeof value === 'number') {
             value = value.toFixed(2);
         } else if (key === "Variant Name" && value) {
             value = `Options: ${value}`;
